@@ -1,0 +1,4 @@
+npm install express-validator // для валидации данных
+npm install nodemon // для быстрой синхронизации кода без перезагрузки
+npm install bcrypt // для хэширования паролей
+
