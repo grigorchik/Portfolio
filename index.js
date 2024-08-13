@@ -1,10 +1,9 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
 import pkg from 'pg';
 import {registerValidation} from './Validation/auth.js';
-import {validationResult} from "express-validator";
 import UserModel from './models/User.js';
+import * as UserController from './controllers/UserController.js';
+import CheckAuth from "./utils/checkAuth.js";
 
 const app = express();
 app.use(express.json());
@@ -21,7 +20,6 @@ const config = {
         rejectUnauthorized: false // В случае самоподписанного сертификата
     }
 };
-
 // Creating a new PostgreSQL client
 const client = new Client(config);
 
@@ -41,48 +39,6 @@ UserModel.sync({force: false})  // Создает таблицу, если ее 
     .catch(err => {
         console.error('Error syncing User table:', err);
     });
-//////
-app.post('/auth/register', registerValidation, async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json(errors.array())
-    }
-
-    const password = req.body.password;
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
-
-    try {
-        const user = await UserModel.create({
-            email: req.body.email,
-            fullName: req.body.fullName,
-            avatarUrl: req.body.avatarUrl,
-            passwordHash: hash
-        })
-
-        const token = jwt.sign({
-                id: user.id,
-            },
-            'secret123',
-            {
-                expiresIn: '30d',
-            });
-//Деструктуризация объекта и удаления поля passwordHash
-        const userData = user.get({ plain: true });
-        const { passwordHash, ...userWithoutPasswordHash } = userData;
-
-        res.json({
-            ... userWithoutPasswordHash,
-            token,
-        });
-    } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(500).json({
-            message: 'Failed to register user'
-        });
-    }
-});
-
 
 app.listen(4444, (err) => {
     if (err) {
@@ -90,4 +46,16 @@ app.listen(4444, (err) => {
     }
     console.log('Server running on port 4444 ');
 });
+
+//////
+
+app.post('/auth/register', registerValidation, UserController.register);
+
+app.post('/auth/login', UserController.login);
+
+app.get('/auth/me',CheckAuth, UserController.getMe);
+
+/////
+
+
 
