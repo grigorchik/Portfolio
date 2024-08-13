@@ -1,7 +1,7 @@
 import {DataTypes} from 'sequelize';
-import sequelize from '../Database/Database.js';
+import sequelize from '../database/Database.js';
 
-const UserSchema = sequelize.define('Users', {
+const UserSchema = sequelize.define('User', {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -25,7 +25,8 @@ const UserSchema = sequelize.define('Users', {
             unique: true
         },
     }, {
-        timestamps: true
+        timestamps: true,
+        tableName: 'users'
     },
 );
 
