@@ -1,16 +1,33 @@
 import express from 'express';
+import multer from 'multer';
 import pkg from 'pg';
 import {registerValidation, loginValidation, postCreateValidation} from './Validations.js';
 import UserModel from './models/User.js';
 import PostModel from './models/Post.js';
-import * as UserController from './controllers/UserController.js';
-import * as PostController from './controllers/PostController.js';
-import CheckAuth from "./utils/checkAuth.js";
-import checkAuth from "./utils/checkAuth.js";
+import {PostController, UserController} from './controllers/index.js';
+import {checkAuth, handleValidationErrors} from "./utils/index.js";
 
 const app = express();
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 const {Client} = pkg;
+
+const storage = multer.diskStorage({
+    destination: (_, __, cb) => {
+        cb(null, 'uploads');
+    },
+    filename: (_, file, cb) => {
+        cb(null, file.originalname);
+    },
+});
+
+const upload = multer({storage});
+
+app.post('/upload', checkAuth, upload.single('image'), (req, res) => {
+    res.json({
+        url: `/uploads/${req.file.filename}`,
+    })
+});
 
 // Configuration for PostgreSQL
 const config = {
@@ -36,16 +53,16 @@ client.connect(err => {
 });
 /////// Для создания таблицы users // Создает таблицу, если ее нет
 UserModel.sync({force: false}).then(() => {
-        console.log('User table synced');
-    }).catch(err => {
-        console.error('Error syncing User table:', err);
-    });
+    console.log('User table synced');
+}).catch(err => {
+    console.error('Error syncing User table:', err);
+});
 ////// posts
 PostModel.sync({force: false}).then(() => {
     console.log('Posts table synced');
 }).catch(err => {
-        console.error('Error syncing PostModel:', err);
-    })
+    console.error('Error syncing PostModel:', err);
+})
 /////
 app.listen(4444, (err) => {
     if (err) {
@@ -56,17 +73,18 @@ app.listen(4444, (err) => {
 
 //////
 
-app.post('/auth/register', registerValidation, UserController.register);
+app.post('/auth/register', registerValidation, handleValidationErrors, UserController.register);
 
-app.post('/auth/login', loginValidation, UserController.login);
+app.post('/auth/login', loginValidation, handleValidationErrors, UserController.login);
 
-app.get('/auth/me', CheckAuth, UserController.getMe);
+app.get('/auth/me', checkAuth, UserController.getMe);
 
-//app.get('/posts', PostController.getAll);
-//app.get('/posts/:id', PostController.getOne);
 app.post('/posts', postCreateValidation, checkAuth, PostController.create);
-//app.delete('/posts',checkAuth, PostController.remove);
-//app.patch('/posts',checkAuth, PostController.update);
+app.get('/posts', PostController.getAll);
+app.get('/posts/:id', PostController.getOne);
+app.delete('/posts/:id', checkAuth, PostController.remove);
+app.patch('/posts/:id', postCreateValidation, checkAuth, PostController.update);
+
 
 
 
